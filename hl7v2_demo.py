@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import uuid
 
 import requests
 
@@ -20,7 +21,7 @@ import us_core_check
 from connector import FhirConfig, FhirR4Connector
 
 TAG_SYSTEM = "http://arfa-demo.test/run"
-TAG_CODE = "lab-demo"
+TAG_CODE = "lab-" + uuid.uuid4().hex[:6]  # unique per run -> clean, isolated read-back on the shared sandbox
 
 
 def main():

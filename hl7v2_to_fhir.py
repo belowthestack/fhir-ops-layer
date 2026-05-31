@@ -53,6 +53,7 @@ def oru_to_fhir_bundle(raw: str, tag: dict | None = None) -> dict:
     """Map an ORU^R01 message to a FHIR R4 transaction Bundle."""
     segs = parse_segments(raw)
     meta = {"tag": [tag]} if tag else {}
+    run_id = uuid.uuid4().hex[:8]  # unique per call so re-runs don't trip HAPI duplicate detection
     pid_url = "urn:uuid:" + str(uuid.uuid4())
     sr_url = "urn:uuid:" + str(uuid.uuid4())
     dr_url = "urn:uuid:" + str(uuid.uuid4())
@@ -71,7 +72,7 @@ def oru_to_fhir_bundle(raw: str, tag: dict | None = None) -> dict:
             patient = {
                 "resourceType": "Patient",
                 "meta": dict(meta),
-                "identifier": ([{"system": "urn:mrn", "value": _comp(ident, 0)}] if _comp(ident, 0) else []),
+                "identifier": ([{"system": "urn:mrn", "value": _comp(ident, 0) + "-" + run_id}] if _comp(ident, 0) else []),
                 "name": ([{"family": _comp(nm, 0), "given": [_comp(nm, 1)]}] if nm else []),
                 "gender": {"M": "male", "F": "female"}.get(sex, "unknown"),
             }
