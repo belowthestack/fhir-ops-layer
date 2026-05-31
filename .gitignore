@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+synthea_data/
+*.log
+.DS_Store
+
+# never commit private keys or per-environment secrets
+epic_keys/
+*.pem
+.env

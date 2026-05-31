@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARFA · FHIR Follow-Up Priority</title>
+<style>
+  :root{ --navy:#0A2540; --navy2:#0E2E52; --ink:#1E293B; --muted:#5B6B7F;
+         --teal:#0F9D8C; --line:#E2E8F0; --slate:#F8FAFC;
+         --red:#DC2626; --red-bg:#FEF2F2; --amber:#C2410C; --amber-bg:#FFF4ED;
+         --green:#067A5B; --green-bg:#ECFDF5; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ font-family:"Segoe UI",-apple-system,system-ui,Roboto,Arial,sans-serif; color:var(--ink); background:var(--slate); }
+  .wrap{ max-width:1040px; margin:0 auto; padding:24px; }
+  .top{ background:var(--navy); border-radius:14px; padding:18px 22px; display:flex; align-items:center; justify-content:space-between; }
+  .mark{ display:flex; align-items:center; gap:12px; }
+  .mark img{ height:40px; width:auto; display:block; }
+  .mark .t1{ color:#fff; font-weight:800; font-size:20px; line-height:1; }
+  .mark .t2{ color:#9DB4D0; font-size:11px; letter-spacing:.4px; text-transform:uppercase; margin-top:3px; }
+  .pill-demo{ background:rgba(94,230,211,.15); color:#5EE6D3; border:1px solid rgba(94,230,211,.4);
+              font-size:11px; font-weight:700; padding:6px 12px; border-radius:999px; }
+  .sub{ font-size:13px; color:var(--muted); margin:14px 2px 6px; }
+  .counts{ display:flex; gap:10px; margin:14px 0 10px; }
+  .count{ flex:1; background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .count .n{ font-size:26px; font-weight:800; }
+  .count .l{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-top:2px; }
+  .count.red .n{ color:var(--red); } .count.amber .n{ color:var(--amber); } .count.green .n{ color:var(--green); }
+  table{ width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  th{ text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.7px; color:var(--muted);
+      background:#fff; padding:12px 14px; border-bottom:2px solid var(--line); }
+  td{ padding:12px 14px; font-size:13px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td{ border-bottom:none; }
+  .pname{ font-weight:700; color:var(--navy); }
+  .pid{ font-size:11px; color:var(--muted); margin-top:2px; font-family:"JetBrains Mono",monospace; }
+  .pill{ display:inline-block; font-size:11px; font-weight:700; padding:5px 11px; border-radius:999px; white-space:nowrap; }
+  .pill.red{ background:var(--red-bg); color:var(--red); } .pill.amber{ background:var(--amber-bg); color:var(--amber); }
+  .pill.green{ background:var(--green-bg); color:var(--green); }
+  .dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .dot.red{ background:var(--red); } .dot.amber{ background:var(--amber); } .dot.green{ background:var(--green); }
+  .why{ color:var(--muted); font-size:12px; }
+  .score{ font-family:"JetBrains Mono",monospace; font-weight:600; }
+  .foot{ margin-top:16px; font-size:11px; color:var(--muted); line-height:1.7; border-top:1px solid var(--line); padding-top:12px; }
+  .foot b{ color:var(--navy); }
+  .foot .src{ font-family:"JetBrains Mono",monospace; font-size:10px; color:#94A3B8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="mark">
+      <img src="assets/arfa-mark-white.png" alt="ARFA">
+      <div>
+        <div class="t1">FHIR Follow-Up Priority</div>
+        <div class="t2">ARFA Aesthetic Operating Layer · Retention</div>
+      </div>
+    </div>
+    <div class="pill-demo">● FHIR R4 sandbox · synthetic data</div>
+  </div>
+
+  <div class="sub" id="sub">Loading...</div>
+
+  <div class="counts" id="counts"></div>
+
+  <table>
+    <thead>
+      <tr><th>Patient</th><th>Priority</th><th>Last visit</th><th>Cadence</th><th>Score</th><th>Why</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div class="foot" id="foot"></div>
+</div>
+
+<script src="fhir_followup_data.js"></script>
+<script>
+(function(){
+  var data = window.FHIR_FOLLOWUP;
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var PILL = { 'Needs call this week':'red', 'Soft touch':'amber', 'No action':'green' };
+
+  if(!data){ document.getElementById('sub').textContent = 'No data. Run: python demo.py --js fhir_followup_data.js'; return; }
+
+  document.getElementById('sub').innerHTML =
+    'Read live from <b>' + esc(data.source) + '</b>, recall window ' +
+    esc(data.recall_window_days) + ' days. US Core conformance pre-check passed.';
+
+  var c = data.counts || {};
+  document.getElementById('counts').innerHTML =
+    '<div class="count red"><div class="n">'+(c.needs_call||0)+'</div><div class="l">Needs call this week</div></div>' +
+    '<div class="count amber"><div class="n">'+(c.soft_touch||0)+'</div><div class="l">Soft touch</div></div>' +
+    '<div class="count green"><div class="n">'+(c.no_action||0)+'</div><div class="l">No action</div></div>';
+
+  var rows = (data.items||[]).map(function(it){
+    var p = PILL[it.bucket] || 'green';
+    var days = it.days_since_last_encounter==null ? '&mdash;' : (it.days_since_last_encounter + 'd ago');
+    var cad = it.personal_cadence_days==null ? 'n/a' : (it.personal_cadence_days + 'd');
+    return '<tr>' +
+      '<td><div class="pname">'+esc(it.patient_name||it.patient_id)+'</div><div class="pid">'+esc(it.patient_id)+'</div></td>' +
+      '<td><span class="pill '+p+'"><span class="dot '+p+'"></span>'+esc(it.bucket)+'</span></td>' +
+      '<td>'+days+'</td>' +
+      '<td>'+cad+'</td>' +
+      '<td class="score">'+Number(it.score).toFixed(2)+'</td>' +
+      '<td class="why">'+esc(it.explanation)+'</td>' +
+      '</tr>';
+  }).join('');
+  document.getElementById('rows').innerHTML = rows;
+
+  document.getElementById('foot').innerHTML =
+    '<b>How this was produced:</b> a FHIR R4 connector read Patient + Encounter resources via standard REST, ' +
+    'mapped them to ARFA\'s canonical model, and scored recall priority (days since last encounter vs personal cadence and recall window). ' +
+    '<br><b>Standards-based</b>, the same connector works against any FHIR R4 endpoint. ' +
+    'US Core 6.1.0 conformance pre-check on every resource (authoritative validator_cli / Inferno is the CI gate). ' +
+    '<br>Not a production EHR integration, not HIPAA-compliant, not an Epic integration. Synthetic data only.' +
+    '<div class="src" style="margin-top:8px;">source: '+esc(data.source)+(data.scoped_by_tag?(' · tag: '+esc(data.scoped_by_tag)):'')+' · generated '+esc(data.generated_at)+'</div>';
+})();
+</script>
+</body>
+</html>

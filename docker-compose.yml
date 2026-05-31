@@ -1,0 +1,21 @@
+# Local HAPI FHIR R4 server for the AOL FHIR connector demo.
+# After `docker-compose up -d`, the FHIR endpoint is at:
+#   http://localhost:8080/fhir
+# This is a sandbox: open auth, ephemeral H2 store, NOT for PHI.
+# SMART/OAuth2 is Rung 2 against the SMART Health IT sandbox, not here.
+
+version: "3.8"
+
+services:
+  hapi:
+    image: hapiproject/hapi:latest
+    container_name: arfa-aol-hapi-r4
+    ports:
+      - "8080:8080"
+    environment:
+      hapi.fhir.fhir_version: R4
+      hapi.fhir.allow_external_references: "true"
+      hapi.fhir.expunge_enabled: "true"
+      hapi.fhir.default_encoding: JSON
+      # Default H2 in-memory store. Switch to Postgres for persistence later.
+    restart: unless-stopped
