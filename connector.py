@@ -118,6 +118,29 @@ class FhirR4Connector:
         pre-check, which needs the original resource, not the ARFA mapping."""
         yield from self._search(resource_type, params)
 
+    # ----- Level 1: write-back + delta sync -----
+    def create_resource(self, resource_type: str, body: dict) -> dict:
+        """POST a new FHIR resource (write-back). Returns the server's created
+        resource, including its assigned id. Closes the loop: read -> decide -> act."""
+        url = self.cfg.base_url.rstrip("/") + "/" + resource_type
+        headers = {
+            "Accept": "application/fhir+json",
+            "Content-Type": "application/fhir+json",
+            "User-Agent": self.cfg.user_agent,
+        }
+        r = requests.post(url, json=body, headers=headers, timeout=self.cfg.timeout_s)
+        r.raise_for_status()
+        return r.json()
+
+    def read_since(self, resource_type: str, since_iso: str,
+                   params: Optional[dict] = None) -> Iterator[dict]:
+        """Yield resources changed since `since_iso` via FHIR `_lastUpdated=gt...`.
+        This is delta sync by polling; true push is FHIR Subscriptions (Rule 45),
+        which needs a callback receiver and is a later increment."""
+        p = dict(params or {})
+        p["_lastUpdated"] = "gt" + since_iso
+        yield from self._search(resource_type, p)
+
 
 # ------------------------- mappers (FHIR -> ARFA canonical) -------------------------
 

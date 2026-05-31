@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 
 # Terminology systems US Core binds (subset we touch)
 CVX = "http://hl7.org/fhir/sid/cvx"
+LOINC = "http://loinc.org"
 SNOMED = "http://snomed.info/sct"
 CPT = "http://www.ama-assn.org/go/cpt"
 V3_ACTCODE = "http://terminology.hl7.org/CodeSystem/v3-ActCode"
@@ -106,10 +107,33 @@ def check_immunization(r: dict) -> ConformanceResult:
     return ConformanceResult("Immunization", r.get("id", ""), "us-core-immunization", issues)
 
 
+def check_observation(r: dict) -> ConformanceResult:
+    """US Core Laboratory Result Observation."""
+    issues: list[Issue] = []
+    if not r.get("status"):
+        issues.append(Issue("error", "Observation.status", "required"))
+    cats = r.get("category") or []
+    has_lab = any(any(c.get("code") == "laboratory" for c in (cat.get("coding") or [])) for cat in cats)
+    if not has_lab:
+        issues.append(Issue("warning", "Observation.category", "US Core Lab Observation expects category=laboratory"))
+    codings = (r.get("code") or {}).get("coding") or []
+    if not codings:
+        issues.append(Issue("error", "Observation.code", "required"))
+    elif not any(c.get("system") == LOINC for c in codings):
+        issues.append(Issue("warning", "Observation.code", "US Core Lab Observation expects a LOINC code"))
+    if not (r.get("subject") or {}).get("reference", "").startswith("Patient/"):
+        issues.append(Issue("error", "Observation.subject", "required reference to a Patient"))
+    has_value = any(k in r for k in ("valueQuantity", "valueString", "valueCodeableConcept", "valueBoolean", "valueInteger")) or r.get("dataAbsentReason")
+    if not has_value:
+        issues.append(Issue("error", "Observation.value[x]", "required (or dataAbsentReason)"))
+    return ConformanceResult("Observation", r.get("id", ""), "us-core-observation-lab", issues)
+
+
 CHECKERS = {
     "Patient": check_patient,
     "Encounter": check_encounter,
     "Immunization": check_immunization,
+    "Observation": check_observation,
 }
 
 
